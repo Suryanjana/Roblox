@@ -1,0 +1,543 @@
+--[[
+    Improved Fly GUI Script with new features
+    Author: Natsyn (Original)
+    
+    Changelog:
+    - FIXED: Avatar orientation now syncs with WASD movement direction during fly.
+    - FIXED: Fly feature logic to correctly calculate direction based on camera.
+    - FIXED: Fly deceleration logic to allow smooth coasting to a stop.
+    - Added Speedhack, Infinite Jump, and Jumphack features.
+    - Added 'K' key shortcut to hide/show the menu.
+    - Fixed the close button functionality.
+]]
+
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+-- Local Player
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Create Root GUI
+local FlyGui = Instance.new("ScreenGui")
+FlyGui.Name = "FlyGui"
+FlyGui.Parent = PlayerGui
+FlyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+FlyGui.ResetOnSpawn = false
+
+-- Main Container
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = FlyGui
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 280, 0, 380)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 37, 43)
+MainFrame.BorderSizePixel = 0
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+local UIStroke_Main = Instance.new("UIStroke")
+UIStroke_Main.Color = Color3.fromRGB(80, 85, 95)
+UIStroke_Main.Transparency = 0.5
+UIStroke_Main.Thickness = 1
+UIStroke_Main.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke_Main.Parent = MainFrame
+
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Parent = MainFrame
+TitleBar.BackgroundColor3 = Color3.fromRGB(45, 47, 54)
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BorderSizePixel = 0
+TitleBar.ClipsDescendants = true
+
+local UICorner_Title = Instance.new("UICorner")
+UICorner_Title.CornerRadius = UDim.new(0, 8)
+UICorner_Title.Parent = TitleBar
+
+-- Title Bar Icon
+local TitleIcon = Instance.new("Frame")
+TitleIcon.Name = "TitleIcon"
+TitleIcon.Parent = TitleBar
+TitleIcon.Size = UDim2.new(0, 20, 0, 20)
+TitleIcon.Position = UDim2.new(0, 15, 0.5, -10)
+TitleIcon.BackgroundTransparency = 1
+local iconPart1 = Instance.new("Frame")
+iconPart1.BackgroundColor3 = Color3.fromRGB(110, 180, 255)
+iconPart1.BorderSizePixel = 0
+iconPart1.Rotation = -45
+iconPart1.Size = UDim2.new(0.8, 0, 0.15, 0)
+iconPart1.Position = UDim2.new(0.1, 0, 0.2, 0)
+iconPart1.Parent = TitleIcon
+Instance.new("UICorner", iconPart1)
+local iconPart2 = iconPart1:Clone()
+iconPart2.Rotation = 45
+iconPart2.Position = UDim2.new(0.1, 0, 0.8, -iconPart1.AbsoluteSize.Y)
+iconPart2.Parent = TitleIcon
+local iconPart3 = iconPart1:Clone()
+iconPart3.Rotation = 0
+iconPart3.Size = UDim2.new(0.5, 0, 0.15, 0)
+iconPart3.Position = UDim2.new(0, 0, 0.5, -iconPart1.AbsoluteSize.Y/2)
+iconPart3.Parent = TitleIcon
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Parent = TitleBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Position = UDim2.new(0, 45, 0, 0)
+TitleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "Mod Menu"
+TitleLabel.TextColor3 = Color3.fromRGB(220, 225, 230)
+TitleLabel.TextSize = 16
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Window Control Buttons
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Name = "ButtonContainer"
+ButtonContainer.Parent = TitleBar
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Size = UDim2.new(0, 60, 1, 0)
+ButtonContainer.Position = UDim2.new(1, -65, 0, 0)
+local UIListLayout_Buttons = Instance.new("UIListLayout")
+UIListLayout_Buttons.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout_Buttons.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout_Buttons.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout_Buttons.Padding = UDim.new(0, 5)
+UIListLayout_Buttons.Parent = ButtonContainer
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Parent = ButtonContainer
+MinimizeButton.LayoutOrder = 1
+MinimizeButton.Size = UDim2.new(0, 24, 0, 24)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 63, 70)
+MinimizeButton.Text = ""
+MinimizeButton.BorderSizePixel = 0
+Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 6)
+local MinimizeIcon = Instance.new("Frame")
+MinimizeIcon.Parent = MinimizeButton
+MinimizeIcon.BackgroundColor3 = Color3.fromRGB(180, 185, 190)
+MinimizeIcon.Size = UDim2.new(0.5, 0, 0, 2)
+MinimizeIcon.Position = UDim2.new(0.25, 0, 0.5, -1)
+MinimizeIcon.BorderSizePixel = 0
+Instance.new("UICorner", MinimizeIcon)
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = ButtonContainer
+CloseButton.LayoutOrder = 2
+CloseButton.Size = UDim2.new(0, 24, 0, 24)
+CloseButton.BackgroundColor3 = Color3.fromRGB(229, 89, 89)
+CloseButton.Text = ""
+CloseButton.BorderSizePixel = 0
+Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
+local CloseIcon1 = Instance.new("Frame")
+CloseIcon1.Parent = CloseButton
+CloseIcon1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+CloseIcon1.Size = UDim2.new(0.6, 0, 0, 2)
+CloseIcon1.Position = UDim2.new(0.2, 0, 0.5, -1)
+CloseIcon1.Rotation = 45
+CloseIcon1.BorderSizePixel = 0
+Instance.new("UICorner", CloseIcon1)
+local CloseIcon2 = CloseIcon1:Clone()
+CloseIcon2.Rotation = -45
+CloseIcon2.Parent = CloseButton
+
+-- Content Area
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Parent = MainFrame
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+ContentFrame.ClipsDescendants = true
+
+local UIPadding_Content = Instance.new("UIPadding")
+UIPadding_Content.PaddingTop = UDim.new(0, 15)
+UIPadding_Content.PaddingBottom = UDim.new(0, 15)
+UIPadding_Content.PaddingLeft = UDim.new(0, 15)
+UIPadding_Content.PaddingRight = UDim.new(0, 15)
+UIPadding_Content.Parent = ContentFrame
+
+local UIListLayout_Content = Instance.new("UIListLayout")
+UIListLayout_Content.Parent = ContentFrame
+UIListLayout_Content.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout_Content.Padding = UDim.new(0, 10)
+UIListLayout_Content.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Helper function for creating feature input fields
+local function CreateFeatureInput(parent, labelText, placeholderText, layoutOrder)
+    local container = Instance.new("Frame")
+    container.Name = labelText:gsub(" ", "") .. "Container"
+    container.Parent = parent
+    container.BackgroundTransparency = 1
+    container.Size = UDim2.new(1, 0, 0, 50)
+    container.LayoutOrder = layoutOrder
+
+    local label = Instance.new("TextLabel")
+    label.Parent = container
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamSemibold
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(220, 225, 230)
+    label.TextSize = 13
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local textbox = Instance.new("TextBox")
+    textbox.Name = "Input"
+    textbox.Parent = container
+    textbox.Position = UDim2.new(0, 0, 0, 20)
+    textbox.Size = UDim2.new(1, 0, 0, 30)
+    textbox.BackgroundColor3 = Color3.fromRGB(45, 47, 54)
+    textbox.BorderSizePixel = 0
+    textbox.Font = Enum.Font.Gotham
+    textbox.PlaceholderText = placeholderText
+    textbox.Text = ""
+    textbox.TextColor3 = Color3.fromRGB(200, 205, 210)
+    textbox.TextSize = 14
+    textbox.ClearTextOnFocus = false
+    Instance.new("UICorner", textbox).CornerRadius = UDim.new(0, 6)
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 10)
+    padding.PaddingRight = UDim.new(0, 10)
+    padding.Parent = textbox
+
+    return textbox
+end
+
+-- Fly Button
+local FlyButton = Instance.new("TextButton")
+FlyButton.Name = "FlyButton"
+FlyButton.Parent = ContentFrame
+FlyButton.LayoutOrder = 1
+FlyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+FlyButton.BorderSizePixel = 0
+FlyButton.Size = UDim2.new(1, 0, 0, 45)
+FlyButton.Font = Enum.Font.GothamSemibold
+FlyButton.Text = "TOGGLE FLY"
+FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyButton.TextSize = 16
+Instance.new("UICorner", FlyButton).CornerRadius = UDim.new(0, 8)
+
+local FlyGradient = Instance.new("UIGradient")
+FlyGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 115, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 90, 230))
+})
+FlyGradient.Rotation = 90
+FlyGradient.Parent = FlyButton
+
+-- Infinite Jump Button
+local InfiniteJumpButton = FlyButton:Clone()
+InfiniteJumpButton.Name = "InfiniteJumpButton"
+InfiniteJumpButton.Parent = ContentFrame
+InfiniteJumpButton.LayoutOrder = 2
+InfiniteJumpButton.Text = "TOGGLE INFINITE JUMP"
+
+-- Speedhack Input
+local SpeedInput = CreateFeatureInput(ContentFrame, "Kecepatan Jalan (Speedhack)", "Default: 16", 3)
+
+-- Jumphack Input
+local JumpInput = CreateFeatureInput(ContentFrame, "Kekuatan Lompat (Jumphack)", "Default: 50", 4)
+
+-- Status and Credit
+local StatusFrame = Instance.new("Frame")
+StatusFrame.Name = "StatusFrame"
+StatusFrame.Parent = ContentFrame
+StatusFrame.LayoutOrder = 5
+StatusFrame.BackgroundTransparency = 1
+StatusFrame.Size = UDim2.new(1, 0, 0, 20)
+
+local StatusIndicator = Instance.new("Frame")
+StatusIndicator.Name = "StatusIndicator"
+StatusIndicator.Parent = StatusFrame
+StatusIndicator.Size = UDim2.new(0, 10, 0, 10)
+StatusIndicator.Position = UDim2.new(0, 0, 0.5, -5)
+StatusIndicator.BackgroundColor3 = Color3.fromRGB(180, 185, 190)
+StatusIndicator.BorderSizePixel = 0
+Instance.new("UICorner", StatusIndicator).CornerRadius = UDim.new(1, 0)
+
+local StatusBadge = Instance.new("TextLabel")
+StatusBadge.Name = "StatusBadge"
+StatusBadge.Parent = StatusFrame
+StatusBadge.BackgroundTransparency = 1
+StatusBadge.Position = UDim2.new(0, 15, 0, 0)
+StatusBadge.Size = UDim2.new(0.5, 0, 1, 0)
+StatusBadge.Font = Enum.Font.GothamSemibold
+StatusBadge.Text = "Status: Idle"
+StatusBadge.TextColor3 = Color3.fromRGB(180, 185, 190)
+StatusBadge.TextSize = 13
+StatusBadge.TextXAlignment = Enum.TextXAlignment.Left
+
+local CreditLabel = Instance.new("TextLabel")
+CreditLabel.Name = "CreditLabel"
+CreditLabel.Parent = StatusFrame
+CreditLabel.BackgroundTransparency = 1
+CreditLabel.Size = UDim2.new(0.5, 0, 1, 0)
+CreditLabel.Position = UDim2.new(1, 0, 0, 0)
+CreditLabel.AnchorPoint = Vector2.new(1, 0)
+CreditLabel.Font = Enum.Font.Gotham
+CreditLabel.Text = "by Natsyn | @natsumiworld"
+CreditLabel.TextColor3 = Color3.fromRGB(130, 136, 145)
+CreditLabel.TextSize = 12
+CreditLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+--[[ SCRIPTS & LOGIC ]]--
+
+-- Hover / UI Tweens (visual only)
+do
+    local function hover(button, enterProps, leaveProps, t)
+        local ti = TweenInfo.new(t or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, ti, enterProps):Play()
+        end)
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, ti, leaveProps):Play()
+        end)
+    end
+    hover(CloseButton, {BackgroundColor3 = Color3.fromRGB(210, 70, 70)}, {BackgroundColor3 = Color3.fromRGB(229, 89, 89)}, 0.1)
+    hover(MinimizeButton, {BackgroundColor3 = Color3.fromRGB(80, 83, 90)}, {BackgroundColor3 = Color3.fromRGB(60, 63, 70)}, 0.1)
+end
+
+-- Dragging Logic
+local function DragGuiScript()
+    local gui = MainFrame
+    local dragging, dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = gui.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- Fly Logic (FIXED)
+local function FlyScript()
+    local plr = LocalPlayer
+    local mouse = plr:GetMouse()
+    local flying = false
+    
+    FlyButton.MouseButton1Click:Connect(function()
+        pcall(function()
+             flying = not flying
+             if flying then
+                mouse.KeyDown:Fire("e")
+             end
+        end)
+    end)
+    
+    local function setStatus(text, color, indicatorColor)
+        StatusBadge.Text = "Status: " .. text
+        TweenService:Create(StatusBadge, TweenInfo.new(0.2), {TextColor3 = color}):Play()
+        TweenService:Create(StatusIndicator, TweenInfo.new(0.2), {BackgroundColor3 = indicatorColor}):Play()
+    end
+    
+    local torso, humanoid
+    local function getCharacterParts()
+        local char = plr.Character
+        if char then
+            torso = char:FindFirstChild("HumanoidRootPart")
+            humanoid = char:FindFirstChild("Humanoid")
+        end
+        return torso and humanoid
+    end
+
+    local ctrl = {f = 0, b = 0, l = 0, r = 0}
+    local maxspeed = 1000
+    local speed = 50
+    
+    function Fly()
+        if not getCharacterParts() then return end
+        local bg = Instance.new("BodyGyro", torso)
+        bg.P = 9e4
+        bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.cframe = torso.CFrame
+        local bv = Instance.new("BodyVelocity", torso)
+        bv.velocity = Vector3.new(0, 0.1, 0)
+        bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+        
+        local lastVelocity = Vector3.new(0, 0, 0)
+
+        repeat wait()
+            humanoid.PlatformStand = true
+
+            if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+                speed = speed + 5 + (speed/maxspeed)
+                if speed > maxspeed then speed = maxspeed end
+            else
+                speed = speed - 10
+                if speed < 0 then speed = 0 end
+            end
+
+            local moveDirection = (Workspace.CurrentCamera.CFrame.LookVector * (ctrl.f + ctrl.b)) + (Workspace.CurrentCamera.CFrame.RightVector * (ctrl.l + ctrl.r))
+
+            if moveDirection.Magnitude > 0 then
+                lastVelocity = moveDirection.Unit
+                bv.velocity = lastVelocity * speed
+            else
+                bv.velocity = lastVelocity * speed
+            end
+            
+            if speed == 0 then
+                bv.velocity = Vector3.new(0,0.1,0)
+            end
+            
+            -- [FIX] Make character face the movement direction to sync with WASD
+            if bv.velocity.Magnitude > 0.1 then
+                bg.cframe = CFrame.new(torso.Position, torso.Position + bv.velocity)
+            end
+            
+        until not flying or not getCharacterParts()
+
+        ctrl = {f = 0, b = 0, l = 0, r = 0}
+        pcall(function() bg:Destroy() end)
+        pcall(function() bv:Destroy() end)
+        if humanoid then humanoid.PlatformStand = false end
+        speed = 50
+        setStatus("Idle", Color3.fromRGB(180, 185, 190), Color3.fromRGB(180, 185, 190))
+    end
+
+    mouse.KeyDown:connect(function(key)
+        key = key:lower()
+        if key == "e" then
+            if not flying then return end
+            setStatus("Flying", Color3.fromRGB(80, 220, 150), Color3.fromRGB(80, 220, 150))
+            coroutine.wrap(Fly)()
+        elseif key == "w" then ctrl.f = 1
+        elseif key == "s" then ctrl.b = -1
+        elseif key == "a" then ctrl.l = -1
+        elseif key == "d" then ctrl.r = 1
+        end
+    end)
+    mouse.KeyUp:connect(function(key)
+        key = key:lower()
+        if key == "w" then ctrl.f = 0
+        elseif key == "s" then ctrl.b = 0
+        elseif key == "a" then ctrl.l = 0
+        elseif key == "d" then ctrl.r = 0
+        end
+    end)
+end
+
+-- Window Control & New Features Logic
+local function FeaturesAndControlsScript()
+    -- Window Controls
+    local isMinimized = false
+    local originalSize = MainFrame.Size
+    local minimizedSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, TitleBar.Size.Y.Offset)
+    local minimizeIcon = MinimizeButton:FindFirstChildOfClass("Frame")
+
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        local goalSize = isMinimized and minimizedSize or originalSize
+        local goalRotation = isMinimized and 180 or 0
+        TweenService:Create(minimizeIcon, TweenInfo.new(0.2), {Rotation = goalRotation}):Play()
+        TweenService:Create(MainFrame, TweenInfo.new(0.25), {Size = goalSize}):Play()
+    end)
+
+    CloseButton.MouseButton1Click:Connect(function()
+        FlyGui:Destroy()
+    end)
+
+    -- Hide/Show Shortcut
+    MainFrame.Visible = true
+    UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+        if gameProcessedEvent then return end
+        if input.KeyCode == Enum.KeyCode.K then
+            MainFrame.Visible = not MainFrame.Visible
+        end
+    end)
+
+    -- NEW: Features Logic
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    
+    if not humanoid then return end
+
+    local originalWalkSpeed = humanoid.WalkSpeed
+    local originalJumpPower = humanoid.JumpPower
+
+    SpeedInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local speedValue = tonumber(SpeedInput.Text)
+            if speedValue and speedValue > 0 then
+                humanoid.WalkSpeed = speedValue
+            else
+                SpeedInput.Text = tostring(humanoid.WalkSpeed)
+            end
+        end
+    end)
+    
+    JumpInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            local jumpValue = tonumber(JumpInput.Text)
+            if jumpValue and jumpValue >= 0 then
+                humanoid.JumpPower = jumpValue
+            else
+                JumpInput.Text = tostring(humanoid.JumpPower)
+            end
+        end
+    end)
+
+    local isInfiniteJumpOn = false
+    InfiniteJumpButton.MouseButton1Click:Connect(function()
+        isInfiniteJumpOn = not isInfiniteJumpOn
+        if isInfiniteJumpOn then
+            InfiniteJumpButton.Text = "INFINITE JUMP (ON)"
+            InfiniteJumpButton.BackgroundColor3 = Color3.fromRGB(80, 220, 150)
+        else
+            InfiniteJumpButton.Text = "TOGGLE INFINITE JUMP"
+            InfiniteJumpButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+        end
+    end)
+    
+    UserInputService.JumpRequest:Connect(function()
+        if isInfiniteJumpOn and humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+    
+    FlyGui.Destroying:Connect(function()
+        if humanoid and humanoid.Parent then
+            humanoid.WalkSpeed = originalWalkSpeed
+            humanoid.JumpPower = originalJumpPower
+        end
+    end)
+end
+
+-- Initialize all scripts
+coroutine.wrap(DragGuiScript)()
+coroutine.wrap(FlyScript)()
+coroutine.wrap(FeaturesAndControlsScript)()
